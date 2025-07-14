@@ -1,0 +1,20 @@
+This is a more comprehensive test document with multiple paragraphs and content.
+
+Introduction:
+This document serves as a comprehensive test for the DocuMind AI application. It contains various sections and detailed content to properly test the document analysis functionality.
+
+Main Content:
+The application uses Google Gemini AI to analyze documents and provide intelligent responses. Users can upload PDF or TXT files and interact with them through two main modes.
+
+Key Features:
+1. Document Upload and Processing
+2. AI-powered Summarization
+3. Interactive Q&A Mode
+4. Challenge Mode with Comprehension Questions
+5. Dark and Light Theme Support
+
+Technical Implementation:
+The backend is built with Express.js and TypeScript, while the frontend uses React with modern UI components. The application integrates with Google's Gemini API for natural language processing.
+
+Conclusion:
+This comprehensive test document should provide enough content for the AI to generate meaningful summaries and answer detailed questions about the application's functionality.

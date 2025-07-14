@@ -19,13 +19,26 @@ export function DocumentUpload({ onDocumentUploaded }: DocumentUploadProps) {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      console.log('Starting upload for file:', file.name, 'Type:', file.type, 'Size:', file.size);
+      
       const formData = new FormData();
       formData.append('document', file);
       
-      const response = await apiRequest('POST', '/api/documents/upload', formData);
-      return await response.json();
+      try {
+        const response = await apiRequest('POST', '/api/documents/upload', formData);
+        console.log('Upload response received:', response.status);
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        return data;
+      } catch (error) {
+        console.error('Upload error details:', error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
+      console.log('Upload success:', data);
       onDocumentUploaded(data.document);
       toast({
         title: "Document uploaded successfully",
@@ -33,6 +46,7 @@ export function DocumentUpload({ onDocumentUploaded }: DocumentUploadProps) {
       });
     },
     onError: (error: any) => {
+      console.error('Upload mutation error:', error);
       toast({
         title: "Upload failed",
         description: error.message || "Failed to upload document. Please try again.",
