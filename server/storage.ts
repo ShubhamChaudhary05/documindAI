@@ -31,8 +31,10 @@ export class MemStorage implements IStorage {
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const id = this.currentDocumentId++;
     const document: Document = {
-      ...insertDocument,
       id,
+      content: insertDocument.content,
+      filename: insertDocument.filename,
+      summary: insertDocument.summary ?? null,
       uploadedAt: new Date()
     };
     this.documents.set(id, document);
@@ -46,8 +48,10 @@ export class MemStorage implements IStorage {
   async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
     const id = this.currentConversationId++;
     const conversation: Conversation = {
-      ...insertConversation,
       id,
+      mode: insertConversation.mode,
+      documentId: insertConversation.documentId ?? null,
+      messages: insertConversation.messages ?? [],
       createdAt: new Date()
     };
     this.conversations.set(id, conversation);
@@ -68,8 +72,13 @@ export class MemStorage implements IStorage {
   async createChallenge(insertChallenge: InsertChallenge): Promise<Challenge> {
     const id = this.currentChallengeId++;
     const challenge: Challenge = {
-      ...insertChallenge,
       id,
+      documentId: insertChallenge.documentId ?? null,
+      questions: insertChallenge.questions,
+      userAnswers: insertChallenge.userAnswers ?? [],
+      evaluations: insertChallenge.evaluations ?? [],
+      currentQuestion: insertChallenge.currentQuestion ?? 0,
+      completed: insertChallenge.completed ?? false,
       createdAt: new Date()
     };
     this.challenges.set(id, challenge);

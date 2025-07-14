@@ -1,11 +1,16 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertDocumentSchema, insertConversationSchema, insertChallengeSchema } from "@shared/schema";
 import multer from "multer";
 import * as fs from "fs";
-import * as pdfParse from "pdf-parse";
+import pdfParse from "pdf-parse";
+
+// Extend Request type to include file property
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
 import { summarizeDocument, answerQuestion, generateChallengeQuestions, evaluateAnswer } from "./services/openai";
 
 const upload = multer({ dest: 'uploads/' });
@@ -13,7 +18,7 @@ const upload = multer({ dest: 'uploads/' });
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Upload document endpoint
-  app.post("/api/documents/upload", upload.single('document'), async (req, res) => {
+  app.post("/api/documents/upload", upload.single('document'), async (req: MulterRequest, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -177,15 +182,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Document not found" });
       }
 
-      const currentQuestion = challenge.questions[challenge.currentQuestion];
+      const currentQuestionIndex = challenge.currentQuestion ?? 0;
+      const currentQuestion = challenge.questions[currentQuestionIndex];
       
       // Evaluate the answer
       const evaluation = await evaluateAnswer(document.content, currentQuestion, answer);
 
       // Update challenge with answer and evaluation
-      const updatedAnswers = [...challenge.userAnswers, answer];
-      const updatedEvaluations = [...challenge.evaluations, evaluation];
-      const nextQuestion = challenge.currentQuestion + 1;
+      const updatedAnswers = [...(challenge.userAnswers ?? []), answer];
+      const updatedEvaluations = [...(challenge.evaluations ?? []), evaluation];
+      const nextQuestion = currentQuestionIndex + 1;
       const isCompleted = nextQuestion >= challenge.questions.length;
 
       await storage.updateChallenge(challengeId, {
@@ -198,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response: any = {
         evaluation,
         isCompleted,
-        questionNumber: challenge.currentQuestion + 1,
+        questionNumber: currentQuestionIndex + 1,
         totalQuestions: challenge.questions.length
       };
 
