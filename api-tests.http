@@ -1,0 +1,45 @@
+### Health Check
+GET http://localhost:5000/api/health
+
+### Upload Document (Text file)
+POST http://localhost:5000/api/documents/upload
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="document"; filename="test.txt"
+Content-Type: text/plain
+
+This is a test document for upload. It contains some sample text to test the document analysis functionality.
+--boundary--
+
+### Get Document by ID
+GET http://localhost:5000/api/documents/1
+
+### Ask Question about Document
+POST http://localhost:5000/api/conversations/ask
+Content-Type: application/json
+
+{
+  "documentId": 1,
+  "question": "What is this document about?"
+}
+
+### Start Challenge Mode
+POST http://localhost:5000/api/challenges/start
+Content-Type: application/json
+
+{
+  "documentId": 1
+}
+
+### Submit Challenge Answer
+POST http://localhost:5000/api/challenges/answer
+Content-Type: application/json
+
+{
+  "challengeId": 1,
+  "answer": "This document is a simple test file used for testing the upload functionality."
+}
+
+### Get Challenge Status
+GET http://localhost:5000/api/challenges/1
