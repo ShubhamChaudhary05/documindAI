@@ -46,8 +46,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Document appears to be empty or unreadable" });
       }
 
-      // Generate summary
-      const summary = await summarizeDocument(content);
+      // Generate summary (with fallback handling)
+      let summary: string;
+      try {
+        summary = await summarizeDocument(content);
+      } catch (error) {
+        console.error("Summary generation failed, using fallback:", error);
+        summary = `Document uploaded successfully. Summary temporarily unavailable due to AI service issues. The document contains approximately ${Math.round(content.length / 6)} words and is ready for analysis.`;
+      }
 
       // Store document
       const document = await storage.createDocument({

@@ -5,22 +5,47 @@ const genAI = new GoogleGenerativeAI(process.env.OPENAI_API_KEY || "");
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function summarizeDocument(content: string): Promise<string> {
-  try {
-    const prompt = `You are a document summarization expert. Create concise summaries that capture the main points and key insights of documents. Keep summaries under 150 words.
+  const maxRetries = 3;
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const prompt = `You are a document summarization expert. Create concise summaries that capture the main points and key insights of documents. Keep summaries under 150 words.
 
 Please provide a concise summary (maximum 150 words) of the following document:
 
 ${content}`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    return text || "Unable to generate summary";
-  } catch (error) {
-    console.error("Summarization error:", error);
-    throw new Error("Failed to generate document summary");
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      return text || "Unable to generate summary - please try again later";
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Summarization attempt ${attempt} failed:`, error.message || error);
+      
+      // Check if it's a 503 (service overloaded) or rate limit error
+      if (error.status === 503 || error.message?.includes('overloaded') || error.message?.includes('rate limit')) {
+        if (attempt < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          console.log(`Waiting ${delay}ms before retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        // If all retries failed, return a fallback summary instead of throwing
+        return `Document uploaded successfully. Summary temporarily unavailable due to high AI service load. The document contains ${Math.round(content.length / 6)} words and has been processed for analysis.`;
+      }
+      
+      // For other errors, throw immediately
+      throw error;
+    }
   }
+  
+  // If we get here, all retries failed
+  console.error("All summarization attempts failed:", lastError);
+  return `Document uploaded successfully. Summary temporarily unavailable due to AI service issues. The document has been processed and is ready for questions.`;
 }
 
 export async function answerQuestion(documentContent: string, question: string, conversationHistory: string[]): Promise<string> {

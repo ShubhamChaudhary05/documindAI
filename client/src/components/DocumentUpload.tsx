@@ -40,9 +40,17 @@ export function DocumentUpload({ onDocumentUploaded }: DocumentUploadProps) {
     onSuccess: (data) => {
       console.log('Upload success:', data);
       onDocumentUploaded(data.document);
+      
+      // Check if summary indicates AI service issues
+      const isAIServiceIssue = data.document.summary?.includes('temporarily unavailable') || 
+                              data.document.summary?.includes('service issues');
+      
       toast({
         title: "Document uploaded successfully",
-        description: "Your document has been processed and is ready for analysis.",
+        description: isAIServiceIssue 
+          ? "Document uploaded! AI summary may be limited due to service load. You can still ask questions about your document."
+          : "Your document has been processed and is ready for analysis.",
+        variant: isAIServiceIssue ? "default" : "default"
       });
     },
     onError: (error: any) => {
