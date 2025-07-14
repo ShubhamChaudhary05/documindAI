@@ -1,28 +1,22 @@
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "your-api-key-here" 
-});
+// Initialize Gemini AI with the API key
+const genAI = new GoogleGenerativeAI(process.env.OPENAI_API_KEY || "");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function summarizeDocument(content: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are a document summarization expert. Create concise summaries that capture the main points and key insights of documents. Keep summaries under 150 words."
-        },
-        {
-          role: "user",
-          content: `Please provide a concise summary (maximum 150 words) of the following document:\n\n${content}`
-        }
-      ],
-      max_tokens: 200
-    });
+    const prompt = `You are a document summarization expert. Create concise summaries that capture the main points and key insights of documents. Keep summaries under 150 words.
 
-    return response.choices[0].message.content || "Unable to generate summary";
+Please provide a concise summary (maximum 150 words) of the following document:
+
+${content}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    return text || "Unable to generate summary";
   } catch (error) {
     console.error("Summarization error:", error);
     throw new Error("Failed to generate document summary");
@@ -42,24 +36,22 @@ export async function answerQuestion(documentContent: string, question: string, 
       })
       .join('\n');
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an intelligent document analysis assistant. Answer questions based ONLY on the provided document content. Always include specific references to sections, paragraphs, or quotes from the document to justify your answers. If the document doesn't contain information to answer the question, clearly state that. Format your response with the answer followed by a reference section.
+    const prompt = `You are an intelligent document analysis assistant. Answer questions based ONLY on the provided document content. Always include specific references to sections, paragraphs, or quotes from the document to justify your answers. If the document doesn't contain information to answer the question, clearly state that. Format your response with the answer followed by a reference section.
 
-          Document content: ${documentContent}`
-        },
-        {
-          role: "user",
-          content: `Previous conversation:\n${historyContext}\n\nNew question: ${question}`
-        }
-      ],
-      max_tokens: 800
-    });
+Document content: ${documentContent}
 
-    return response.choices[0].message.content || "Unable to provide answer";
+Previous conversation:
+${historyContext}
+
+New question: ${question}
+
+Please provide a detailed answer based on the document content above.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    return text || "Unable to provide answer";
   } catch (error) {
     console.error("Question answering error:", error);
     throw new Error("Failed to answer question");
@@ -68,24 +60,50 @@ export async function answerQuestion(documentContent: string, question: string, 
 
 export async function generateChallengeQuestions(documentContent: string): Promise<string[]> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at creating thoughtful comprehension questions. Generate exactly 3 challenging questions that test deep understanding, critical thinking, and inference skills based on the document content. Questions should require more than simple recall and should encourage analysis and reasoning. Return the response as a JSON object with a "questions" array.`
-        },
-        {
-          role: "user",
-          content: `Based on this document, create 3 challenging comprehension questions:\n\n${documentContent}`
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 500
-    });
+    const prompt = `You are an expert at creating thoughtful comprehension questions. Generate exactly 3 challenging questions that test deep understanding, critical thinking, and inference skills based on the document content. Questions should require more than simple recall and should encourage analysis and reasoning. Return the response as a JSON object with a "questions" array.
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    return result.questions || [];
+Based on this document, create 3 challenging comprehension questions:
+
+${documentContent}
+
+Please respond with a JSON object like: {"questions": ["question1", "question2", "question3"]}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const content = response.text();
+    
+    try {
+      // Try to parse as JSON first
+      const parsed = JSON.parse(content);
+      if (parsed.questions && Array.isArray(parsed.questions)) {
+        return parsed.questions.slice(0, 3);
+      }
+    } catch {
+      // Fallback: try to extract questions from text
+      try {
+        // Look for JSON array in the response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.questions && Array.isArray(parsed.questions)) {
+            return parsed.questions.slice(0, 3);
+          }
+        }
+      } catch {
+        // Extract questions manually
+        const lines = content.split('\n').filter(line => line.trim() && (line.includes('?') || line.match(/^\d+\.?\s*/)));
+        if (lines.length >= 3) {
+          return lines.slice(0, 3).map(line => line.replace(/^\d+\.?\s*/, '').trim());
+        }
+      }
+    }
+    
+    // Return default questions as fallback
+    return [
+      "What are the main themes or key points discussed in this document?",
+      "How do the ideas presented relate to or build upon each other?",
+      "What conclusions can you draw from the information provided?"
+    ];
   } catch (error) {
     console.error("Question generation error:", error);
     throw new Error("Failed to generate challenge questions");
@@ -94,26 +112,21 @@ export async function generateChallengeQuestions(documentContent: string): Promi
 
 export async function evaluateAnswer(documentContent: string, question: string, userAnswer: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert evaluator of comprehension answers. Evaluate the user's answer based on accuracy, depth of understanding, and how well it addresses the question. Provide constructive feedback, highlight what was done well, and suggest improvements. Always reference specific parts of the document to support your evaluation.
+    const prompt = `You are an expert evaluator of comprehension answers. Evaluate the user's answer based on accuracy, depth of understanding, and how well it addresses the question. Provide constructive feedback, highlight what was done well, and suggest improvements. Always reference specific parts of the document to support your evaluation.
 
-          Document content: ${documentContent}
-          
-          Question: ${question}`
-        },
-        {
-          role: "user",
-          content: `Please evaluate this answer: ${userAnswer}`
-        }
-      ],
-      max_tokens: 600
-    });
+Document content: ${documentContent}
 
-    return response.choices[0].message.content || "Unable to evaluate answer";
+Question: ${question}
+
+Please evaluate this answer: ${userAnswer}
+
+Provide detailed feedback on accuracy, completeness, and understanding demonstrated.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    return text || "Unable to evaluate answer";
   } catch (error) {
     console.error("Answer evaluation error:", error);
     throw new Error("Failed to evaluate answer");

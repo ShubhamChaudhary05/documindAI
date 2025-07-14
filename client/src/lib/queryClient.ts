@@ -1,7 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-// Base URL for the Flask backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Base URL for the Express backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
