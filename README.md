@@ -128,3 +128,13 @@ npm run type-check
 2. Use the provided Prettier settings for code formatting
 3. Test both upload modes before submitting changes
 4. Update this README for any new setup requirements
+
+## 🖼️ UI Screenshots
+
+<p align="center">
+  <img src="https://github.com/ShubhamChaudhary05/documindAI/blob/main/Screenshot%20from%202025-07-15%2010-19-05.png?raw=true" alt="UI Screenshot 1" width="700"/>
+  <br/><br/>
+  <img src="https://github.com/ShubhamChaudhary05/documindAI/blob/main/Screenshot%20from%202025-07-15%2010-19-56.png?raw=true" alt="UI Screenshot 2" width="700"/>
+  <br/><br/>
+  <img src="https://github.com/ShubhamChaudhary05/documindAI/blob/main/Screenshot%20from%202025-07-15%2010-20-27.png?raw=true" alt="UI Screenshot 3" width="700"/>
+</p>
